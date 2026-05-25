@@ -6,7 +6,7 @@
 ## 2. Git Tag & Release
 
 - [x] 2.1 Commit all changes (including `hacs.json`)
-- [x] 2.2 Create git tag `0.8.0` matching `manifest.json` version
+- [x] 2.2 Create git tag `0.9.0` matching `manifest.json` version
 - [x] 2.3 Push tag to remote
 - [x] 2.4 Create a GitHub Release from the tag (required — HACS needs a release, not just a tag)
 
