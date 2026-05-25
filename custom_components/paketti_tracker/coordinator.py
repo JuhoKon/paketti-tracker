@@ -13,10 +13,11 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .const import (
     CONF_PACKAGES,
+    CONF_POLL_INTERVAL,
     CONF_TRACKING_ID,
     CONF_VENDOR,
+    DEFAULT_POLL_INTERVAL_MINUTES,
     DOMAIN,
-    SCAN_INTERVAL_MINUTES,
 )
 from .models import TrackingResult
 from .scrapers import get_scraper
@@ -32,11 +33,12 @@ class PakettiCoordinator(DataUpdateCoordinator[dict[str, TrackingResult]]):
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         """Initialize the coordinator."""
+        poll_interval = entry.options.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL_MINUTES)
         super().__init__(
             hass,
             _LOGGER,
             name=DOMAIN,
-            update_interval=timedelta(minutes=SCAN_INTERVAL_MINUTES),
+            update_interval=timedelta(minutes=poll_interval),
         )
         self.config_entry = entry
         self._scrapers: dict[str, BaseScraper] = {}

@@ -6,9 +6,11 @@ Home Assistant custom integration for tracking Finnish postal packages. Currentl
 
 - Track multiple packages from a single integration instance
 - One sensor entity per package with normalized status states
-- Automatic polling every 60 minutes (stops polling delivered packages)
+- **Sidebar panel** with visual package list, delivery timeline, and event map
+- Automatic polling every 60 minutes (configurable, stops polling delivered packages)
 - No API keys or credentials required — uses anonymous access
 - Options flow for adding/removing packages without reconfiguration
+- WebSocket API for panel communication (add/remove/refresh from UI)
 
 ### Sensor States
 
@@ -50,8 +52,8 @@ Each sensor entity exposes:
 
 1. Go to **Settings → Devices & Services → Add Integration**
 2. Search for "Paketti Tracker" and add it
-3. To add packages: go to the integration options (click Configure)
-4. Select "Add package", enter tracking ID, choose carrier, optionally name it
+3. To add packages: use the sidebar panel (click "Paketti Tracker" in the sidebar) or go to integration options (click Configure)
+4. From the panel: click the + button, enter tracking ID, choose carrier, optionally name it
 
 ## Development
 
@@ -75,6 +77,26 @@ ruff format custom_components/ tests/
 # Type check
 mypy custom_components/
 ```
+
+### Frontend Panel Development
+
+The sidebar panel is built with React + TypeScript + Vite. The pre-built JS is committed to the repo so HACS users don't need Node.js.
+
+```bash
+cd custom_components/paketti_tracker/frontend
+
+# Install dependencies
+npm install
+
+# Development server (with HMR)
+npm run dev
+
+# Production build
+npm run build
+# Output: dist/paketti-tracker-panel.js
+```
+
+After building, commit the updated `dist/paketti-tracker-panel.js` to the repo.
 
 ### Releasing a New Version
 

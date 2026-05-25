@@ -44,6 +44,8 @@ ACTION_REMOVE = "remove"
 
 # Coordinator
 SCAN_INTERVAL_MINUTES = 60
+DEFAULT_POLL_INTERVAL_MINUTES = 60
+CONF_POLL_INTERVAL = "poll_interval_minutes"
 
 # Sensor attribute keys
 ATTR_VENDOR = "vendor"

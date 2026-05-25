@@ -32,3 +32,9 @@ Thumbs.db
 
 # Ruff
 .ruff_cache/
+
+# Node.js (frontend panel)
+node_modules/
+
+# Keep the built panel JS (don't ignore frontend/dist/)
+!custom_components/paketti_tracker/frontend/dist/

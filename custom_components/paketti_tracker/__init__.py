@@ -9,6 +9,8 @@ from homeassistant.core import HomeAssistant
 
 from .const import DOMAIN
 from .coordinator import PakettiCoordinator
+from .panel import async_register_panel, async_unregister_panel
+from .websocket_api import async_register_websocket_commands
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -25,6 +27,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = coordinator
 
+    # Register WebSocket commands and sidebar panel.
+    async_register_websocket_commands(hass)
+    await async_register_panel(hass)
+
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     return True
@@ -36,5 +42,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     if unload_ok:
         hass.data[DOMAIN].pop(entry.entry_id)
+        await async_unregister_panel(hass)
 
     return unload_ok
