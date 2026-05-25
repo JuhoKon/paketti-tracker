@@ -76,6 +76,18 @@ ruff format custom_components/ tests/
 mypy custom_components/
 ```
 
+### Releasing a New Version
+
+HACS requires a **GitHub Release** (not just a tag) to detect new versions.
+
+1. Bump `version` in `custom_components/paketti_tracker/manifest.json`
+2. Commit: `git commit -am "chore: bump version to X.Y.Z"`
+3. Tag: `git tag X.Y.Z`
+4. Push: `git push origin main && git push origin X.Y.Z`
+5. Create a **GitHub Release** from the tag (via GitHub UI or `gh release create X.Y.Z`)
+
+Without step 5, HACS will show "The version ... can not be used with HACS."
+
 ## License
 
 MIT
