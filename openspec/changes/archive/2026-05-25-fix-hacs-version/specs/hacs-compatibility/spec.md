@@ -10,7 +10,7 @@ The repository SHALL include a `hacs.json` file at the root with valid metadata 
 
 ### Requirement: Version tag matches manifest
 
-The repository SHALL have a git tag matching the `version` field in `manifest.json` using plain semver format (e.g. `0.7.0`).
+The repository SHALL have a git tag matching the `version` field in `manifest.json` using plain semver format (e.g. `0.8.0`).
 
 #### Scenario: HACS resolves version from tag
 - **WHEN** HACS checks for available versions
