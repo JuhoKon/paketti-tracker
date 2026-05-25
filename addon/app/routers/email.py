@@ -150,8 +150,8 @@ async def confirm_discovered(tracking_id: str) -> dict:
     return {"message": "Package added to tracking"}
 
 
-@router.delete("/discovered/{tracking_id}", status_code=204)
-async def dismiss_discovered(tracking_id: str) -> None:
+@router.delete("/discovered/{tracking_id}", status_code=204, response_model=None)
+async def dismiss_discovered(tracking_id: str):
     """Dismiss a discovered package without tracking it."""
     pkg_repo = _get_package_repo()
     removed = await pkg_repo.remove_discovered(tracking_id)

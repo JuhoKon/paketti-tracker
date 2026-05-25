@@ -116,8 +116,8 @@ async def edit_package(tracking_id: str, body: PackageUpdate) -> PackageResponse
     return _package_to_response(updated, events)
 
 
-@router.delete("/{tracking_id}", status_code=204)
-async def delete_package(tracking_id: str) -> None:
+@router.delete("/{tracking_id}", status_code=204, response_model=None)
+async def delete_package(tracking_id: str):
     """Remove a tracked package."""
     repo = _get_repo()
     deleted = await repo.delete(tracking_id)
