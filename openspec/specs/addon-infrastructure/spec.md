@@ -2,7 +2,7 @@
 
 ### Requirement: Docker container runtime
 
-The add-on container SHALL use a multi-stage Docker build: stage 1 builds the React frontend with Node.js, stage 2 runs Python 3.12 with FastAPI and uvicorn as the application server. A build.yaml SHALL map each supported architecture (aarch64, amd64, armv7) to the correct HA base image via the BUILD_FROM arg.
+The add-on container SHALL use a multi-stage Docker build: stage 1 builds the React frontend with Node.js, stage 2 runs Python 3.12 with FastAPI and uvicorn as the application server. The BUILD_FROM arg SHALL be declared before any FROM instruction and default to the aarch64 base image. Supervisor passes the correct architecture-specific image via `--build-arg`.
 
 #### Scenario: Container starts successfully
 - **WHEN** the add-on is started by HA Supervisor
@@ -15,17 +15,43 @@ The add-on container SHALL use a multi-stage Docker build: stage 1 builds the Re
 
 #### Scenario: Multi-arch build
 - **WHEN** the add-on is built for aarch64
-- **THEN** Supervisor SHALL pass the aarch64-base-python image as BUILD_FROM
+- **THEN** Supervisor SHALL pass the aarch64-base-python image as BUILD_FROM via --build-arg
+
+#### Scenario: s6-overlay runs as PID 1
+- **WHEN** the container starts
+- **THEN** s6-overlay `/init` SHALL be PID 1 (config.yaml sets `init: false` to prevent tini injection)
+
+#### Scenario: Service working directory
+- **WHEN** the s6 service script runs
+- **THEN** it SHALL change to `/app` before executing uvicorn (s6 services start in `/`)
 
 ---
 
 ### Requirement: Add-on manifest configuration
 
-The add-on SHALL provide a config.yaml defining metadata including name, version, supported architectures, ingress configuration, exposed ports, and configurable options.
+The add-on SHALL provide a config.yaml defining metadata including name, version, supported architectures, ingress configuration, exposed ports, configurable options (including email IMAP settings), and `init: false` to prevent Docker init process injection.
 
 #### Scenario: Supervisor reads config.yaml
 - **WHEN** the add-on is installed
-- **THEN** Supervisor SHALL parse config.yaml with name, version, arch list, ingress: true, ingress_port: 8099, and options schema
+- **THEN** Supervisor SHALL parse config.yaml with name, version, arch list, ingress: true, ingress_port: 8099, init: false, and options schema
+
+#### Scenario: Supervisor reads config.yaml with email options
+- **WHEN** the add-on is installed or options are changed
+- **THEN** Supervisor SHALL parse config.yaml with email options: email_enabled (bool), email_host (str), email_port (int), email_username (str), email_password (password), email_folder (str), email_auto_add (bool)
+
+#### Scenario: Email options have sensible defaults
+- **WHEN** the add-on is installed without user customization
+- **THEN** email_enabled SHALL default to false
+- **AND** email_host SHALL default to empty string
+- **AND** email_port SHALL default to 993
+- **AND** email_username SHALL default to empty string
+- **AND** email_password SHALL default to empty string
+- **AND** email_folder SHALL default to "INBOX"
+- **AND** email_auto_add SHALL default to false
+
+#### Scenario: Password masked in HA UI
+- **WHEN** the user views add-on options in HA
+- **THEN** the email_password field SHALL be displayed as a password (masked) input
 
 ---
 
@@ -74,3 +100,21 @@ The add-on SHALL have access to SUPERVISOR_TOKEN and MQTT broker connection deta
 #### Scenario: MQTT details available
 - **WHEN** the add-on starts with MQTT configured in HA
 - **THEN** MQTT host, port, username, and password SHALL be available via Supervisor API or environment variables
+
+---
+
+### Requirement: Configuration null value handling
+
+The run.sh entry script SHALL handle bashio returning the literal string "null" for unconfigured options by filtering these values and applying sensible defaults.
+
+#### Scenario: bashio returns null for poll interval
+- **WHEN** bashio::config returns "null" for poll_interval_minutes
+- **THEN** run.sh SHALL export PAKETTI_POLL_INTERVAL with default value 60
+
+#### Scenario: bashio returns null for log level
+- **WHEN** bashio::config returns "null" for log_level
+- **THEN** run.sh SHALL export PAKETTI_LOG_LEVEL with default value "info"
+
+#### Scenario: Invalid log level rejected
+- **WHEN** the log level value is not one of debug, info, warning, error, critical
+- **THEN** run.sh SHALL fall back to "info"

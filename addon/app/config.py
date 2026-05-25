@@ -41,6 +41,29 @@ class Settings:
         default_factory=lambda: os.environ.get("HA_API_URL", "http://supervisor/core/api")
     )
 
+    # Email IMAP settings (from add-on options)
+    email_enabled: bool = field(
+        default_factory=lambda: os.environ.get("PAKETTI_EMAIL_ENABLED", "false").lower() == "true"
+    )
+    email_host: str = field(
+        default_factory=lambda: os.environ.get("PAKETTI_EMAIL_HOST", "")
+    )
+    email_port: int = field(
+        default_factory=lambda: int(os.environ.get("PAKETTI_EMAIL_PORT", "993"))
+    )
+    email_username: str = field(
+        default_factory=lambda: os.environ.get("PAKETTI_EMAIL_USERNAME", "")
+    )
+    email_password: str = field(
+        default_factory=lambda: os.environ.get("PAKETTI_EMAIL_PASSWORD", "")
+    )
+    email_folder: str = field(
+        default_factory=lambda: os.environ.get("PAKETTI_EMAIL_FOLDER", "INBOX")
+    )
+    email_auto_add: bool = field(
+        default_factory=lambda: os.environ.get("PAKETTI_EMAIL_AUTO_ADD", "false").lower() == "true"
+    )
+
 
 def load_settings() -> Settings:
     """Create settings from current environment."""

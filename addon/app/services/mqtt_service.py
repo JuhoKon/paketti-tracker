@@ -5,6 +5,8 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
+from dataclasses import dataclass
 from typing import Any
 
 from app.db.models import PackageRow
@@ -25,21 +27,70 @@ _DEVICE_INFO = {
     "model": "Package Tracker",
 }
 
+# Fallback broker settings when Supervisor API is unavailable
+_FALLBACK_HOST = "core-mosquitto"
+_FALLBACK_PORT = 1883
+
+
+@dataclass
+class MqttCredentials:
+    """MQTT broker credentials from Supervisor services API."""
+
+    host: str
+    port: int
+    username: str
+    password: str
+
+
+async def fetch_mqtt_credentials() -> MqttCredentials:
+    """Fetch MQTT credentials from the Supervisor services API.
+
+    Calls GET http://supervisor/services/mqtt with the SUPERVISOR_TOKEN.
+    Falls back to core-mosquitto:1883 with no auth if unavailable.
+    """
+    supervisor_token = os.environ.get("SUPERVISOR_TOKEN", "")
+    if not supervisor_token:
+        logger.warning("SUPERVISOR_TOKEN not set, using MQTT fallback (no auth)")
+        return MqttCredentials(
+            host=_FALLBACK_HOST, port=_FALLBACK_PORT, username="", password=""
+        )
+
+    try:
+        import aiohttp
+
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                "http://supervisor/services/mqtt",
+                headers={"Authorization": f"Bearer {supervisor_token}"},
+                timeout=aiohttp.ClientTimeout(total=10),
+            ) as resp:
+                resp.raise_for_status()
+                data = await resp.json()
+
+        # Response shape: {"result": "ok", "data": {"host": ..., "port": ..., "username": ..., "password": ...}}
+        mqtt_data = data.get("data", {})
+        host = mqtt_data.get("host", _FALLBACK_HOST)
+        port = int(mqtt_data.get("port", _FALLBACK_PORT))
+        username = mqtt_data.get("username", "")
+        password = mqtt_data.get("password", "")
+
+        logger.info("Fetched MQTT credentials from Supervisor (host=%s, port=%d)", host, port)
+        return MqttCredentials(host=host, port=port, username=username, password=password)
+
+    except Exception as exc:
+        logger.warning(
+            "Failed to fetch MQTT credentials from Supervisor API: %s. Using fallback (core-mosquitto:1883, no auth)",
+            exc,
+        )
+        return MqttCredentials(
+            host=_FALLBACK_HOST, port=_FALLBACK_PORT, username="", password=""
+        )
+
 
 class MqttService:
     """Service for publishing package data to MQTT with HA discovery."""
 
-    def __init__(
-        self,
-        host: str = "core-mosquitto",
-        port: int = 1883,
-        username: str = "",
-        password: str = "",
-    ) -> None:
-        self._host = host
-        self._port = port
-        self._username = username
-        self._password = password
+    def __init__(self) -> None:
         self._client: Any = None
         self._connected = False
         self._task: asyncio.Task | None = None
@@ -48,7 +99,7 @@ class MqttService:
     async def start(self) -> None:
         """Start the MQTT connection loop."""
         self._task = asyncio.create_task(self._connection_loop())
-        logger.info("MQTT service starting (broker: %s:%d)", self._host, self._port)
+        logger.info("MQTT service starting")
 
     async def stop(self) -> None:
         """Stop MQTT and publish offline."""
@@ -138,17 +189,24 @@ class MqttService:
         logger.info("Republished %d package sensors", len(self._packages_cache))
 
     async def _connection_loop(self) -> None:
-        """Maintain MQTT connection with reconnect."""
+        """Maintain MQTT connection with reconnect.
+
+        Re-fetches credentials from Supervisor API on each connection attempt
+        to handle credential rotation or Mosquitto restarts.
+        """
         import importlib
 
         while True:
             try:
+                # Fetch (or re-fetch) credentials before each connection attempt
+                creds = await fetch_mqtt_credentials()
+
                 aiomqtt = importlib.import_module("aiomqtt")
                 async with aiomqtt.Client(
-                    hostname=self._host,
-                    port=self._port,
-                    username=self._username or None,
-                    password=self._password or None,
+                    hostname=creds.host,
+                    port=creds.port,
+                    username=creds.username or None,
+                    password=creds.password or None,
                     will=aiomqtt.Will(
                         topic=_AVAILABILITY_TOPIC,
                         payload="offline",
@@ -157,7 +215,7 @@ class MqttService:
                 ) as client:
                     self._client = client
                     self._connected = True
-                    logger.info("Connected to MQTT broker")
+                    logger.info("Connected to MQTT broker at %s:%d", creds.host, creds.port)
 
                     # Publish online and republish all
                     await self.republish_all()

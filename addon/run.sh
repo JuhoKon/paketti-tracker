@@ -1,26 +1,50 @@
 #!/usr/bin/with-contenv bashio
 # shellcheck shell=bash
 
-# Read options from add-on config with defaults
-PAKETTI_POLL_INTERVAL=$(bashio::config 'poll_interval_minutes' 2>/dev/null) || true
-PAKETTI_EMAIL_POLL_INTERVAL=$(bashio::config 'email_poll_interval_minutes' 2>/dev/null) || true
-PAKETTI_LOG_LEVEL=$(bashio::config 'log_level' 2>/dev/null) || true
+# Helper: read bashio config value only if bashio is available and key exists.
+# Falls back to the current env var value or empty string.
+read_config() {
+  local key="$1"
+  local val=""
+  if bashio::config.exists "${key}" 2>/dev/null; then
+    val=$(bashio::config "${key}" 2>/dev/null) || true
+    # Filter "null" string returned when option has no value
+    [[ "${val}" == "null" ]] && val=""
+  fi
+  echo "${val}"
+}
 
-# Filter out "null" values from bashio (returned when option not set)
-[[ "${PAKETTI_POLL_INTERVAL}" == "null" ]] && PAKETTI_POLL_INTERVAL=""
-[[ "${PAKETTI_EMAIL_POLL_INTERVAL}" == "null" ]] && PAKETTI_EMAIL_POLL_INTERVAL=""
-[[ "${PAKETTI_LOG_LEVEL}" == "null" ]] && PAKETTI_LOG_LEVEL=""
+# Read options from add-on config (only when running under HA Supervisor).
+# Pre-existing env vars (e.g. from docker run -e) are preserved as fallback.
+_POLL_INTERVAL=$(read_config 'poll_interval_minutes')
+_EMAIL_POLL_INTERVAL=$(read_config 'email_poll_interval_minutes')
+_LOG_LEVEL=$(read_config 'log_level')
+_EMAIL_ENABLED=$(read_config 'email_enabled')
+_EMAIL_HOST=$(read_config 'email_host')
+_EMAIL_PORT=$(read_config 'email_port')
+_EMAIL_USERNAME=$(read_config 'email_username')
+_EMAIL_PASSWORD=$(read_config 'email_password')
+_EMAIL_FOLDER=$(read_config 'email_folder')
+_EMAIL_AUTO_ADD=$(read_config 'email_auto_add')
 
-# Apply defaults
-export PAKETTI_POLL_INTERVAL="${PAKETTI_POLL_INTERVAL:-60}"
-export PAKETTI_EMAIL_POLL_INTERVAL="${PAKETTI_EMAIL_POLL_INTERVAL:-30}"
+# Export with priority: bashio value > existing env var > default
+export PAKETTI_POLL_INTERVAL="${_POLL_INTERVAL:-${PAKETTI_POLL_INTERVAL:-60}}"
+export PAKETTI_EMAIL_POLL_INTERVAL="${_EMAIL_POLL_INTERVAL:-${PAKETTI_EMAIL_POLL_INTERVAL:-30}}"
+export PAKETTI_EMAIL_ENABLED="${_EMAIL_ENABLED:-${PAKETTI_EMAIL_ENABLED:-false}}"
+export PAKETTI_EMAIL_HOST="${_EMAIL_HOST:-${PAKETTI_EMAIL_HOST:-}}"
+export PAKETTI_EMAIL_PORT="${_EMAIL_PORT:-${PAKETTI_EMAIL_PORT:-993}}"
+export PAKETTI_EMAIL_USERNAME="${_EMAIL_USERNAME:-${PAKETTI_EMAIL_USERNAME:-}}"
+export PAKETTI_EMAIL_PASSWORD="${_EMAIL_PASSWORD:-${PAKETTI_EMAIL_PASSWORD:-}}"
+export PAKETTI_EMAIL_FOLDER="${_EMAIL_FOLDER:-${PAKETTI_EMAIL_FOLDER:-INBOX}}"
+export PAKETTI_EMAIL_AUTO_ADD="${_EMAIL_AUTO_ADD:-${PAKETTI_EMAIL_AUTO_ADD:-false}}"
 
 # Validate log level, default to info
-case "${PAKETTI_LOG_LEVEL}" in
+_LOG_LEVEL="${_LOG_LEVEL:-${PAKETTI_LOG_LEVEL:-info}}"
+case "${_LOG_LEVEL}" in
   debug|info|warning|error|critical) ;;
-  *) PAKETTI_LOG_LEVEL="info" ;;
+  *) _LOG_LEVEL="info" ;;
 esac
-export PAKETTI_LOG_LEVEL
+export PAKETTI_LOG_LEVEL="${_LOG_LEVEL}"
 
 # SUPERVISOR_TOKEN is set automatically by HA Supervisor
 # MQTT credentials are fetched at runtime via Supervisor API

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -11,17 +12,21 @@ import pytest
 from app.db.models import PackageRow
 from app.services.mqtt_service import (
     MqttService,
+    MqttCredentials,
+    fetch_mqtt_credentials,
     _AVAILABILITY_TOPIC,
     _DISCOVERY_TOPIC,
     _STATE_TOPIC,
     _ATTRIBUTES_TOPIC,
+    _FALLBACK_HOST,
+    _FALLBACK_PORT,
 )
 
 
 @pytest.fixture
 def mqtt_service():
     """Create an MQTT service for testing."""
-    service = MqttService(host="localhost", port=1883)
+    service = MqttService()
     return service
 
 
@@ -47,6 +52,74 @@ def sample_package():
         last_location="Helsinki",
         last_event_time=datetime(2026, 5, 22, 9, 0),
     )
+
+
+# -- Credential fetching tests ---
+
+
+@pytest.mark.asyncio
+async def test_fetch_credentials_success():
+    """Test successful credential fetch from Supervisor API."""
+    mock_response = AsyncMock()
+    mock_response.status = 200
+    mock_response.raise_for_status = MagicMock()
+    mock_response.json = AsyncMock(return_value={
+        "result": "ok",
+        "data": {
+            "host": "core-mosquitto",
+            "port": 1883,
+            "username": "homeassistant",
+            "password": "secret123",
+        },
+    })
+    mock_response.__aenter__ = AsyncMock(return_value=mock_response)
+    mock_response.__aexit__ = AsyncMock(return_value=False)
+
+    mock_session = AsyncMock()
+    mock_session.get = MagicMock(return_value=mock_response)
+    mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_session.__aexit__ = AsyncMock(return_value=False)
+
+    with patch.dict(os.environ, {"SUPERVISOR_TOKEN": "test-token"}):
+        with patch("aiohttp.ClientSession", return_value=mock_session):
+            creds = await fetch_mqtt_credentials()
+
+    assert creds.host == "core-mosquitto"
+    assert creds.port == 1883
+    assert creds.username == "homeassistant"
+    assert creds.password == "secret123"
+
+
+@pytest.mark.asyncio
+async def test_fetch_credentials_no_token():
+    """Test fallback when SUPERVISOR_TOKEN is not set."""
+    with patch.dict(os.environ, {}, clear=True):
+        # Remove SUPERVISOR_TOKEN if present
+        os.environ.pop("SUPERVISOR_TOKEN", None)
+        creds = await fetch_mqtt_credentials()
+
+    assert creds.host == _FALLBACK_HOST
+    assert creds.port == _FALLBACK_PORT
+    assert creds.username == ""
+    assert creds.password == ""
+
+
+@pytest.mark.asyncio
+async def test_fetch_credentials_api_failure():
+    """Test fallback when Supervisor API fails."""
+    mock_session = AsyncMock()
+    mock_session.get = MagicMock(side_effect=Exception("Connection refused"))
+    mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_session.__aexit__ = AsyncMock(return_value=False)
+
+    with patch.dict(os.environ, {"SUPERVISOR_TOKEN": "test-token"}):
+        with patch("aiohttp.ClientSession", return_value=mock_session):
+            creds = await fetch_mqtt_credentials()
+
+    assert creds.host == _FALLBACK_HOST
+    assert creds.port == _FALLBACK_PORT
+    assert creds.username == ""
+    assert creds.password == ""
 
 
 # -- Discovery tests ---

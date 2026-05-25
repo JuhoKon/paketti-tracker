@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-import json
 from email.message import Message
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from app.config import Settings
 from app.database import Database
 from app.db.repository import PackageRepository
-from app.db.settings_repository import SettingsRepository
 from app.email.parser import (
     DiscoveredPackage,
     parse_email,
@@ -115,6 +114,35 @@ class TestEmailParser:
 # -- Email Service tests ---
 
 
+def _make_settings(
+    email_enabled: bool = False,
+    email_host: str = "",
+    email_port: int = 993,
+    email_username: str = "",
+    email_password: str = "",
+    email_folder: str = "INBOX",
+    email_auto_add: bool = False,
+    email_poll_interval: int = 30,
+    **kwargs,
+) -> Settings:
+    """Create a Settings instance with email fields overridden via env vars."""
+    import os
+
+    env = {
+        "PAKETTI_EMAIL_ENABLED": str(email_enabled).lower(),
+        "PAKETTI_EMAIL_HOST": email_host,
+        "PAKETTI_EMAIL_PORT": str(email_port),
+        "PAKETTI_EMAIL_USERNAME": email_username,
+        "PAKETTI_EMAIL_PASSWORD": email_password,
+        "PAKETTI_EMAIL_FOLDER": email_folder,
+        "PAKETTI_EMAIL_AUTO_ADD": str(email_auto_add).lower(),
+        "PAKETTI_EMAIL_POLL_INTERVAL": str(email_poll_interval),
+        "PAKETTI_DATA_DIR": kwargs.get("data_dir", "/tmp"),
+    }
+    with patch.dict(os.environ, env, clear=False):
+        return Settings()
+
+
 @pytest.fixture
 async def db(tmp_path):
     """Create a test database."""
@@ -128,7 +156,17 @@ async def db(tmp_path):
 @pytest.mark.asyncio
 async def test_email_service_disabled(db):
     """Service does nothing when email is disabled."""
-    service = EmailService(db, poll_interval_minutes=30)
+    settings = _make_settings(email_enabled=False)
+    service = EmailService(db, settings=settings)
+    count = await service.poll_now()
+    assert count == 0
+
+
+@pytest.mark.asyncio
+async def test_email_service_disabled_no_host(db):
+    """Service does nothing when host is empty even if enabled."""
+    settings = _make_settings(email_enabled=True, email_host="")
+    service = EmailService(db, settings=settings)
     count = await service.poll_now()
     assert count == 0
 
@@ -136,19 +174,16 @@ async def test_email_service_disabled(db):
 @pytest.mark.asyncio
 async def test_email_service_discovers_package(db):
     """Service discovers packages from email."""
-    # Configure email
-    settings_repo = SettingsRepository(db)
-    await settings_repo.set_json("email", {
-        "enabled": True,
-        "host": "imap.test.com",
-        "port": 993,
-        "username": "test@test.com",
-        "password": "pass",
-        "folder": "INBOX",
-        "auto_add": False,
-    })
+    settings = _make_settings(
+        email_enabled=True,
+        email_host="imap.test.com",
+        email_port=993,
+        email_username="test@test.com",
+        email_password="pass",
+        email_folder="INBOX",
+        email_auto_add=False,
+    )
 
-    # Mock the email client
     mock_msg = _make_message(
         subject="Package shipped",
         sender="noreply@posti.fi",
@@ -163,7 +198,7 @@ async def test_email_service_discovers_package(db):
         instance.fetch_messages = AsyncMock(return_value=[mock_msg])
         MockClient.return_value = instance
 
-        service = EmailService(db, poll_interval_minutes=30)
+        service = EmailService(db, settings=settings)
         count = await service.poll_now()
 
     assert count == 1
@@ -178,16 +213,15 @@ async def test_email_service_discovers_package(db):
 @pytest.mark.asyncio
 async def test_email_service_auto_add(db):
     """Service auto-adds when configured."""
-    settings_repo = SettingsRepository(db)
-    await settings_repo.set_json("email", {
-        "enabled": True,
-        "host": "imap.test.com",
-        "port": 993,
-        "username": "test@test.com",
-        "password": "pass",
-        "folder": "INBOX",
-        "auto_add": True,
-    })
+    settings = _make_settings(
+        email_enabled=True,
+        email_host="imap.test.com",
+        email_port=993,
+        email_username="test@test.com",
+        email_password="pass",
+        email_folder="INBOX",
+        email_auto_add=True,
+    )
 
     mock_msg = _make_message(
         subject="Shipped",
@@ -203,7 +237,7 @@ async def test_email_service_auto_add(db):
         instance.fetch_messages = AsyncMock(return_value=[mock_msg])
         MockClient.return_value = instance
 
-        service = EmailService(db, poll_interval_minutes=30)
+        service = EmailService(db, settings=settings)
         count = await service.poll_now()
 
     assert count == 1
@@ -224,18 +258,18 @@ async def test_email_service_deduplication(db):
     # Pre-add a package
     pkg_repo = PackageRepository(db)
     from app.db.models import PackageRow
+
     await pkg_repo.create(PackageRow(tracking_id="JJFI11111111111", vendor="posti"))
 
-    settings_repo = SettingsRepository(db)
-    await settings_repo.set_json("email", {
-        "enabled": True,
-        "host": "imap.test.com",
-        "port": 993,
-        "username": "test",
-        "password": "pass",
-        "folder": "INBOX",
-        "auto_add": False,
-    })
+    settings = _make_settings(
+        email_enabled=True,
+        email_host="imap.test.com",
+        email_port=993,
+        email_username="test",
+        email_password="pass",
+        email_folder="INBOX",
+        email_auto_add=False,
+    )
 
     mock_msg = _make_message(
         subject="Shipped",
@@ -251,7 +285,7 @@ async def test_email_service_deduplication(db):
         instance.fetch_messages = AsyncMock(return_value=[mock_msg])
         MockClient.return_value = instance
 
-        service = EmailService(db, poll_interval_minutes=30)
+        service = EmailService(db, settings=settings)
         count = await service.poll_now()
 
     # Should not add duplicate

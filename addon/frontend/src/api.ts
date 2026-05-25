@@ -101,15 +101,6 @@ export async function getEmailConfig(): Promise<EmailConfig> {
   return api<EmailConfig>("/api/email");
 }
 
-export async function updateEmailConfig(
-  config: Partial<EmailConfig & { password?: string }>
-): Promise<EmailConfig> {
-  return api<EmailConfig>("/api/email", {
-    method: "PATCH",
-    body: JSON.stringify(config),
-  });
-}
-
 export async function testEmailConnection(): Promise<{ success: boolean; message: string }> {
   return api<{ success: boolean; message: string }>("/api/email/test", {
     method: "POST",

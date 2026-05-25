@@ -88,7 +88,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Email service
     _email_service = EmailService(
         database=_database,
-        poll_interval_minutes=_settings.email_poll_interval,
+        settings=_settings,
     )
     await _email_service.start()
 
@@ -168,7 +168,9 @@ if os.path.isdir(_frontend_dir):
         static_path = os.path.join(_frontend_dir, path)
         if os.path.isfile(static_path):
             from fastapi.responses import FileResponse
-            return FileResponse(static_path)
+            import mimetypes
+            mime_type, _ = mimetypes.guess_type(static_path)
+            return FileResponse(static_path, media_type=mime_type)
 
         # Fallback to index.html
         if os.path.isfile(_index_html):

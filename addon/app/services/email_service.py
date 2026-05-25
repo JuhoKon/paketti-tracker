@@ -5,10 +5,10 @@ from __future__ import annotations
 import asyncio
 import logging
 
+from app.config import Settings
 from app.database import Database
 from app.db.models import PackageRow
 from app.db.repository import PackageRepository
-from app.db.settings_repository import SettingsRepository
 from app.email.client import EmailClient, EmailClientError
 from app.email.parser import parse_email
 from app.scrapers.base import get_tracking_url
@@ -22,15 +22,21 @@ class EmailService:
     def __init__(
         self,
         database: Database,
-        poll_interval_minutes: int = 30,
+        settings: Settings,
     ) -> None:
         self._database = database
-        self._poll_interval = poll_interval_minutes * 60
+        self._settings = settings
+        self._poll_interval = settings.email_poll_interval * 60
         self._task: asyncio.Task | None = None
         self._running = False
 
     async def start(self) -> None:
         """Start the email polling loop."""
+        if not self._settings.email_enabled or not self._settings.email_host:
+            logger.info("Email service disabled (email_enabled=%s, host=%r)",
+                        self._settings.email_enabled, self._settings.email_host)
+            return
+
         self._running = True
         self._task = asyncio.create_task(self._poll_loop())
         logger.info("Email service started (interval: %ds)", self._poll_interval)
@@ -53,6 +59,8 @@ class EmailService:
 
     async def poll_now(self) -> int:
         """Trigger an immediate poll. Returns number of discovered packages."""
+        if not self._settings.email_enabled or not self._settings.email_host:
+            return 0
         return await self._check_emails()
 
     async def _poll_loop(self) -> None:
@@ -75,22 +83,12 @@ class EmailService:
 
     async def _check_emails(self) -> int:
         """Check emails and process discovered packages. Returns count."""
-        settings_repo = SettingsRepository(self._database)
-        email_config = await settings_repo.get_json("email")
-
-        if not email_config or not email_config.get("enabled"):
-            return 0
-
-        host = email_config.get("host", "")
-        if not host:
-            return 0
-
         client = EmailClient(
-            server=host,
-            port=email_config.get("port", 993),
-            username=email_config.get("username", ""),
-            password=email_config.get("password", ""),
-            folder=email_config.get("folder", "INBOX"),
+            server=self._settings.email_host,
+            port=self._settings.email_port,
+            username=self._settings.email_username,
+            password=self._settings.email_password,
+            folder=self._settings.email_folder,
         )
 
         try:
@@ -110,7 +108,7 @@ class EmailService:
         # Parse emails for tracking IDs
         pkg_repo = PackageRepository(self._database)
         discovered_count = 0
-        auto_add = email_config.get("auto_add", False)
+        auto_add = self._settings.email_auto_add
 
         for msg in messages:
             discovered = parse_email(msg)

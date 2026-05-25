@@ -22,11 +22,25 @@ options:
   poll_interval_minutes: 60
   email_poll_interval_minutes: 30
   log_level: "info"
+  email_enabled: false
+  email_host: ""
+  email_port: 993
+  email_username: ""
+  email_password: ""
+  email_folder: "INBOX"
+  email_auto_add: false
 
 schema:
   poll_interval_minutes: int
   email_poll_interval_minutes: int
   log_level: list(debug|info|warning|error)
+  email_enabled: bool
+  email_host: "str?"
+  email_port: int
+  email_username: "str?"
+  email_password: "password?"
+  email_folder: str
+  email_auto_add: bool
 
 ports_description:
   "8099/tcp": "Web interface (ingress)"

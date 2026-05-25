@@ -7,7 +7,6 @@ import {
   getNotifications,
   updateNotifications,
   getEmailConfig,
-  updateEmailConfig,
   testEmailConnection,
 } from "../api";
 import type { EmailConfig } from "../types";
@@ -143,28 +142,22 @@ function NotificationSettings() {
 
 function EmailSettings() {
   const [config, setConfig] = useState<EmailConfig | null>(null);
-  const [password, setPassword] = useState("");
   const [testResult, setTestResult] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
 
   useEffect(() => {
     void getEmailConfig().then(setConfig);
   }, []);
 
-  const handleSave = async (updates: Partial<EmailConfig & { password?: string }>) => {
-    setSaving(true);
-    try {
-      const updated = await updateEmailConfig(updates);
-      setConfig(updated);
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const handleTest = async () => {
+    setTesting(true);
     setTestResult("Testing...");
-    const result = await testEmailConnection();
-    setTestResult(result.success ? "Connection successful!" : `Failed: ${result.message}`);
+    try {
+      const result = await testEmailConnection();
+      setTestResult(result.success ? "Connection successful!" : `Failed: ${result.message}`);
+    } finally {
+      setTesting(false);
+    }
   };
 
   if (!config) return null;
@@ -172,72 +165,42 @@ function EmailSettings() {
   return (
     <div className="paketti-section">
       <h3>Email Parsing</h3>
+      <p className="paketti-field__hint">
+        Email configuration is managed via Home Assistant Add-on Options.
+        Changes require an add-on restart.
+      </p>
       <div className="paketti-field paketti-field--row">
-        <label>Enabled</label>
-        <input
-          type="checkbox"
-          checked={config.enabled}
-          onChange={() => void handleSave({ enabled: !config.enabled })}
-        />
+        <label>Status</label>
+        <span>{config.enabled ? "Enabled" : "Disabled"}</span>
       </div>
       {config.enabled && (
         <>
-          <div className="paketti-field">
+          <div className="paketti-field paketti-field--row">
             <label>IMAP Server</label>
-            <input
-              type="text"
-              value={config.host}
-              onBlur={(e) => void handleSave({ host: e.target.value })}
-              onChange={(e) => setConfig({ ...config, host: e.target.value })}
-            />
-          </div>
-          <div className="paketti-field">
-            <label>Port</label>
-            <input
-              type="number"
-              value={config.port}
-              onBlur={(e) => void handleSave({ port: Number(e.target.value) })}
-              onChange={(e) => setConfig({ ...config, port: Number(e.target.value) })}
-            />
-          </div>
-          <div className="paketti-field">
-            <label>Username</label>
-            <input
-              type="text"
-              value={config.username}
-              onBlur={(e) => void handleSave({ username: e.target.value })}
-              onChange={(e) => setConfig({ ...config, username: e.target.value })}
-            />
-          </div>
-          <div className="paketti-field">
-            <label>Password {config.password_set && "(set)"}</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onBlur={() => { if (password) void handleSave({ password }); }}
-              placeholder={config.password_set ? "Enter to change" : "Enter password"}
-            />
-          </div>
-          <div className="paketti-field">
-            <label>Folder</label>
-            <input
-              type="text"
-              value={config.folder}
-              onBlur={(e) => void handleSave({ folder: e.target.value })}
-              onChange={(e) => setConfig({ ...config, folder: e.target.value })}
-            />
+            <span>{config.host || "—"}</span>
           </div>
           <div className="paketti-field paketti-field--row">
-            <label>Auto-add discovered packages</label>
-            <input
-              type="checkbox"
-              checked={config.auto_add}
-              onChange={() => void handleSave({ auto_add: !config.auto_add })}
-            />
+            <label>Port</label>
+            <span>{config.port}</span>
+          </div>
+          <div className="paketti-field paketti-field--row">
+            <label>Username</label>
+            <span>{config.username || "—"}</span>
+          </div>
+          <div className="paketti-field paketti-field--row">
+            <label>Password</label>
+            <span>{config.password_set ? "••••••••" : "Not set"}</span>
+          </div>
+          <div className="paketti-field paketti-field--row">
+            <label>Folder</label>
+            <span>{config.folder}</span>
+          </div>
+          <div className="paketti-field paketti-field--row">
+            <label>Auto-add packages</label>
+            <span>{config.auto_add ? "Yes" : "No"}</span>
           </div>
           <div className="paketti-field">
-            <button className="paketti-btn" onClick={handleTest} disabled={saving}>
+            <button className="paketti-btn" onClick={handleTest} disabled={testing}>
               Test Connection
             </button>
             {testResult && <p className="paketti-field__hint">{testResult}</p>}

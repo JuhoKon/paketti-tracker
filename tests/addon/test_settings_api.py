@@ -97,21 +97,16 @@ async def test_get_email_config_defaults(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_update_email_config(client: AsyncClient):
-    """Test updating email config."""
+    """Email config is read-only via API (managed via add-on Options)."""
     resp = await client.patch("/api/email", json={
         "enabled": True,
         "host": "imap.gmail.com",
         "username": "user@gmail.com",
         "password": "secret123",
     })
-    assert resp.status_code == 200
+    assert resp.status_code == 405
     data = resp.json()
-    assert data["enabled"] is True
-    assert data["host"] == "imap.gmail.com"
-    assert data["username"] == "user@gmail.com"
-    assert data["password_set"] is True
-    # Password should NOT be in the response
-    assert "password" not in data or data.get("password") is None
+    assert "add-on Options" in data["detail"]
 
 
 @pytest.mark.asyncio
