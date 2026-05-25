@@ -1,6 +1,6 @@
 [project]
 name = "paketti-tracker"
-version = "0.1.0"
+version = "0.5.0"
 description = "Home Assistant custom integration for tracking Finnish postal packages"
 requires-python = ">=3.12"
 license = "MIT"
