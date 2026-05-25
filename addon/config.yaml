@@ -1,5 +1,5 @@
 name: "Paketti Tracker"
-version: "0.5.0"
+version: "0.6.0"
 slug: "paketti_tracker"
 description: "Track Finnish postal packages with Posti support, email parsing, and MQTT sensor publishing"
 url: "https://github.com/kontijuh/paketti-tracker"
