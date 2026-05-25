@@ -29,10 +29,8 @@ COPY app/ ./app/
 # Copy frontend build from stage 1
 COPY --from=frontend-build /frontend/dist/ ./frontend/dist/
 
-# Copy entry point
-COPY run.sh /run.sh
-RUN chmod a+x /run.sh
+# Register as s6-overlay service
+COPY run.sh /etc/services.d/paketti-tracker/run
+RUN chmod a+x /etc/services.d/paketti-tracker/run
 
 EXPOSE 8099
-
-CMD ["/run.sh"]
