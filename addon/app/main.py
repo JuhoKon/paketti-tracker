@@ -115,7 +115,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 app = FastAPI(
     title="Paketti Tracker",
-    version="0.9.0",
+    version="0.9.1",
     lifespan=lifespan,
 )
 
