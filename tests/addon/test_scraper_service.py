@@ -11,7 +11,7 @@ import pytest
 from app.database import Database
 from app.db.models import PackageRow, TrackingEventRow
 from app.db.repository import PackageRepository
-from app.scrapers.base import TrackingEvent, TrackingResult, ScraperError
+from app.scrapers.base import TrackingEvent, TrackingResult, ScraperError, RetryableScraperError
 from app.services.notification_checker import NotificationChecker, NotificationEvent
 from app.services.scraper_service import ScraperService
 
@@ -226,3 +226,137 @@ async def test_notification_callback(db, repo):
     callback.assert_called_once()
     notifications = callback.call_args[0][0]
     assert any(n.event_type == "delivered" for n in notifications)
+
+
+# -- Retry Logic tests ---
+
+
+@pytest.mark.asyncio
+async def test_retry_on_retryable_error_then_success(db, repo):
+    """Test that transient errors are retried and succeed on second attempt."""
+    await repo.create(PackageRow(
+        tracking_id="RETRY1",
+        vendor="posti",
+        status="unknown",
+    ))
+
+    mock_result = TrackingResult(
+        tracking_id="RETRY1",
+        vendor="posti",
+        status="in_transit",
+        delivered=False,
+        events=[],
+    )
+
+    with patch("app.services.scraper_service.get_scraper") as mock_get, \
+         patch("app.services.scraper_service.asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
+        mock_scraper = AsyncMock()
+        # First call fails with retryable error, second succeeds
+        mock_scraper.fetch = AsyncMock(
+            side_effect=[
+                RetryableScraperError("HTTP 503"),
+                mock_result,
+            ]
+        )
+        mock_get.return_value = mock_scraper
+
+        service = ScraperService(db, poll_interval_minutes=60)
+        service._session = MagicMock()
+
+        notifications = await service._poll_single(repo, await repo.get_by_id("RETRY1"))
+
+    # Should have retried with 5s delay
+    mock_sleep.assert_called_once_with(5)
+
+    # Package should be updated (scraper succeeded on retry)
+    updated = await repo.get_by_id("RETRY1")
+    assert updated.status == "in_transit"
+
+    # Scraper called twice
+    assert mock_scraper.fetch.call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_retry_exhausted_returns_empty(db, repo):
+    """Test that after all retries exhausted, returns empty notifications."""
+    await repo.create(PackageRow(
+        tracking_id="RETRY2",
+        vendor="posti",
+        status="unknown",
+    ))
+
+    with patch("app.services.scraper_service.get_scraper") as mock_get, \
+         patch("app.services.scraper_service.asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
+        mock_scraper = AsyncMock()
+        # All 3 attempts fail (initial + 2 retries)
+        mock_scraper.fetch = AsyncMock(
+            side_effect=RetryableScraperError("Network timeout")
+        )
+        mock_get.return_value = mock_scraper
+
+        service = ScraperService(db, poll_interval_minutes=60)
+        service._session = MagicMock()
+
+        notifications = await service._poll_single(repo, await repo.get_by_id("RETRY2"))
+
+    # No notifications
+    assert notifications == []
+
+    # Package unchanged
+    pkg = await repo.get_by_id("RETRY2")
+    assert pkg.status == "unknown"
+
+    # Called 3 times total (1 initial + 2 retries)
+    assert mock_scraper.fetch.call_count == 3
+
+    # Slept twice: 5s and 15s
+    assert mock_sleep.call_count == 2
+    mock_sleep.assert_any_call(5)
+    mock_sleep.assert_any_call(15)
+
+
+@pytest.mark.asyncio
+async def test_permanent_error_no_retry(db, repo):
+    """Test that permanent (non-retryable) errors are not retried."""
+    await repo.create(PackageRow(
+        tracking_id="PERM1",
+        vendor="posti",
+        status="unknown",
+    ))
+
+    with patch("app.services.scraper_service.get_scraper") as mock_get, \
+         patch("app.services.scraper_service.asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
+        mock_scraper = AsyncMock()
+        # Permanent error — should not retry
+        mock_scraper.fetch = AsyncMock(
+            side_effect=ScraperError("Tracking ID not found on Posti")
+        )
+        mock_get.return_value = mock_scraper
+
+        service = ScraperService(db, poll_interval_minutes=60)
+        service._session = MagicMock()
+
+        notifications = await service._poll_single(repo, await repo.get_by_id("PERM1"))
+
+    # No notifications
+    assert notifications == []
+
+    # Called exactly once — no retries
+    assert mock_scraper.fetch.call_count == 1
+
+    # No sleep (no retry)
+    mock_sleep.assert_not_called()
+
+    # Package unchanged
+    pkg = await repo.get_by_id("PERM1")
+    assert pkg.status == "unknown"
+
+
+@pytest.mark.asyncio
+async def test_retryable_error_class_attribute():
+    """Test that RetryableScraperError has retryable=True and ScraperError has retryable=False."""
+    retryable = RetryableScraperError("timeout")
+    permanent = ScraperError("not found")
+
+    assert retryable.retryable is True
+    assert permanent.retryable is False

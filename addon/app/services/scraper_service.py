@@ -12,11 +12,15 @@ import aiohttp
 from app.database import Database
 from app.db.models import PackageRow, TrackingEventRow
 from app.db.repository import PackageRepository
-from app.scrapers.base import ScraperError, TrackingResult, get_tracking_url
+from app.scrapers.base import RetryableScraperError, ScraperError, TrackingResult, get_tracking_url
 from app.scrapers.factory import get_scraper
 from app.services.notification_checker import NotificationChecker, NotificationEvent
 
 logger = logging.getLogger(__name__)
+
+# Retry configuration for transient scraper errors.
+_MAX_RETRIES = 2
+_RETRY_DELAYS_S = (5, 15)
 
 # Type for the notification callback
 NotifyCallback = Callable[[list[NotificationEvent]], Awaitable[None]]
@@ -126,7 +130,11 @@ class ScraperService:
     async def _poll_single(
         self, repo: PackageRepository, package: PackageRow
     ) -> list[NotificationEvent]:
-        """Poll a single package and update the database."""
+        """Poll a single package and update the database.
+
+        Retries up to _MAX_RETRIES times on transient (retryable) errors with
+        exponential backoff (_RETRY_DELAYS_S).
+        """
         assert self._session is not None
 
         try:
@@ -135,12 +143,47 @@ class ScraperService:
             logger.warning("No scraper for vendor %s", package.vendor)
             return []
 
-        try:
-            result: TrackingResult = await scraper.fetch(
-                package.tracking_id, self._session
-            )
-        except ScraperError as exc:
-            logger.warning("Scraper error for %s: %s", package.tracking_id, exc)
+        result: TrackingResult | None = None
+        last_error: ScraperError | None = None
+
+        for attempt in range(_MAX_RETRIES + 1):
+            try:
+                result = await scraper.fetch(package.tracking_id, self._session)
+                break  # Success
+            except RetryableScraperError as exc:
+                last_error = exc
+                if attempt < _MAX_RETRIES:
+                    delay = _RETRY_DELAYS_S[attempt]
+                    logger.warning(
+                        "Transient scraper error for %s (vendor=%s), attempt %d/%d, "
+                        "retrying in %ds: %s",
+                        package.tracking_id,
+                        package.vendor,
+                        attempt + 1,
+                        _MAX_RETRIES + 1,
+                        delay,
+                        exc,
+                    )
+                    await asyncio.sleep(delay)
+                else:
+                    logger.warning(
+                        "Scraper failed for %s (vendor=%s) after %d attempts: %s",
+                        package.tracking_id,
+                        package.vendor,
+                        _MAX_RETRIES + 1,
+                        exc,
+                    )
+            except ScraperError as exc:
+                # Permanent error — no retry.
+                logger.warning(
+                    "Scraper error for %s (vendor=%s): %s",
+                    package.tracking_id,
+                    package.vendor,
+                    exc,
+                )
+                return []
+
+        if result is None:
             return []
 
         # Update package fields

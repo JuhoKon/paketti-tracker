@@ -71,6 +71,14 @@ class TrackingResult:
 class ScraperError(Exception):
     """Raised when a scraper fails to retrieve or parse tracking data."""
 
+    retryable: bool = False
+
+
+class RetryableScraperError(ScraperError):
+    """Raised on transient errors that may succeed on retry (timeouts, 5xx)."""
+
+    retryable: bool = True
+
 
 # --- Base class ---
 

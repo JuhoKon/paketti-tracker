@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import json
 import logging
@@ -20,6 +21,7 @@ from .base import (
     STATUS_UNKNOWN,
     VENDOR_POSTI,
     BaseScraper,
+    RetryableScraperError,
     ScraperError,
     TrackingEvent,
     TrackingResult,
@@ -147,13 +149,17 @@ class PostiScraper(BaseScraper):
 
         try:
             async with session.post(_GRAPHQL_URL, json=payload, headers=headers) as resp:
+                if resp.status >= 500:
+                    raise RetryableScraperError(
+                        f"Posti GraphQL returned HTTP {resp.status} for tracking ID {tracking_id}"
+                    )
                 if resp.status != 200:
                     raise ScraperError(
                         f"Posti GraphQL returned HTTP {resp.status} for tracking ID {tracking_id}"
                     )
                 data = await resp.json()
-        except aiohttp.ClientError as exc:
-            raise ScraperError(
+        except (aiohttp.ClientError, asyncio.TimeoutError) as exc:
+            raise RetryableScraperError(
                 f"Network error fetching Posti tracking for {tracking_id}: {exc}"
             ) from exc
 
@@ -179,11 +185,15 @@ class PostiScraper(BaseScraper):
 
         try:
             async with session.post(_AUTH_URL, json={}) as resp:
+                if resp.status >= 500:
+                    raise RetryableScraperError(
+                        f"Posti auth endpoint returned HTTP {resp.status}"
+                    )
                 if resp.status != 200:
                     raise ScraperError(f"Posti auth endpoint returned HTTP {resp.status}")
                 body = await resp.json()
-        except aiohttp.ClientError as exc:
-            raise ScraperError(f"Network error during Posti auth: {exc}") from exc
+        except (aiohttp.ClientError, asyncio.TimeoutError) as exc:
+            raise RetryableScraperError(f"Network error during Posti auth: {exc}") from exc
 
         try:
             self._id_token = body["id_token"]
