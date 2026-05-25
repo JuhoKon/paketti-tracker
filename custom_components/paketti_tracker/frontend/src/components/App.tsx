@@ -11,6 +11,7 @@ import { Header } from "./Header";
 import { PackageList } from "./PackageList";
 import { AddPackageDialog } from "./AddPackageDialog";
 import { SettingsDrawer } from "./SettingsDrawer";
+import { DiscoveredPackages } from "./DiscoveredPackages";
 import globalStyles from "../styles/global.css?inline";
 
 // --- State Management ---
@@ -133,6 +134,7 @@ export function App({ hass }: AppProps) {
       <div className="paketti-tracker">
         <Header />
         <main className="paketti-main">
+          <DiscoveredPackages />
           <PackageList />
         </main>
         {state.showAddDialog && <AddPackageDialog />}

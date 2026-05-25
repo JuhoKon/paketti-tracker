@@ -598,3 +598,181 @@
   font-size: 13px;
   margin: 8px 0 0;
 }
+
+/* --- Last Updated --- */
+
+.paketti-card__last-updated {
+  font-size: 11px;
+  color: var(--secondary-text-color, #757575);
+  margin-left: 8px;
+}
+
+/* --- Read-only field --- */
+
+.paketti-field__readonly {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* --- Outline button variant --- */
+
+.paketti-btn--outline {
+  background: transparent;
+  border: 1px solid var(--divider-color, #e0e0e0);
+  color: var(--primary-text-color, #212121);
+  display: inline-flex;
+  align-items: center;
+}
+
+.paketti-btn--outline:hover {
+  background: var(--secondary-background-color, #f5f5f5);
+}
+
+/* --- Settings sections --- */
+
+.paketti-settings-section {
+  padding: 16px 0;
+  border-top: 1px solid var(--divider-color, #e0e0e0);
+}
+
+.paketti-settings-section__title {
+  font-size: 16px;
+  font-weight: 500;
+  margin: 0 0 12px;
+  color: var(--primary-text-color, #212121);
+}
+
+/* --- Row field (checkbox inline) --- */
+
+.paketti-field--row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.paketti-field--row label {
+  margin-bottom: 0;
+}
+
+.paketti-field--row input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+}
+
+/* --- Checkbox group --- */
+
+.paketti-checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.paketti-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.paketti-checkbox-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+}
+
+/* --- Hint variants --- */
+
+.paketti-field__hint--success {
+  color: var(--paketti-color-delivered);
+}
+
+.paketti-field__hint--error {
+  color: var(--paketti-color-exception);
+}
+
+/* --- Discovered Packages --- */
+
+.paketti-discovered {
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  background: var(--secondary-background-color, #f5f5f5);
+  border-radius: 8px;
+  border: 1px solid var(--divider-color, #e0e0e0);
+}
+
+.paketti-discovered__title {
+  font-size: 14px;
+  font-weight: 500;
+  margin: 0 0 12px;
+  color: var(--primary-text-color, #212121);
+}
+
+.paketti-discovered__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.paketti-discovered__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--primary-background-color, #fff);
+  border-radius: 6px;
+  border: 1px solid var(--divider-color, #e0e0e0);
+}
+
+.paketti-discovered__info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.paketti-discovered__id {
+  font-size: 13px;
+  font-weight: 500;
+  font-family: monospace;
+}
+
+.paketti-discovered__vendor {
+  font-size: 11px;
+  color: var(--secondary-text-color, #757575);
+  text-transform: capitalize;
+}
+
+.paketti-discovered__source {
+  font-size: 11px;
+  color: var(--secondary-text-color, #757575);
+}
+
+.paketti-discovered__actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* --- Number / password input --- */
+
+.paketti-field input[type="number"],
+.paketti-field input[type="password"] {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--divider-color, #e0e0e0);
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: inherit;
+  background: var(--primary-background-color, #fafafa);
+  color: var(--primary-text-color, #212121);
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.paketti-field input[type="number"]:focus,
+.paketti-field input[type="password"]:focus {
+  outline: none;
+  border-color: var(--primary-color, #03a9f4);
+  box-shadow: 0 0 0 2px rgba(3, 169, 244, 0.2);
+}

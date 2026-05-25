@@ -1,4 +1,11 @@
-import type { HomeAssistant, Package, Settings } from "./types";
+import type {
+  DiscoveredPackage,
+  EmailConfig,
+  HomeAssistant,
+  NotificationConfig,
+  Package,
+  Settings,
+} from "./types";
 
 interface PackagesResponse {
   packages: Package[];
@@ -9,12 +16,33 @@ interface AddPackageResponse {
   tracking_id: string;
 }
 
+interface EditPackageResponse {
+  success: boolean;
+}
+
 interface RemovePackageResponse {
   success: boolean;
 }
 
 interface SettingsResponse {
   poll_interval_minutes: number;
+}
+
+interface DiscoveredPackagesResponse {
+  packages: DiscoveredPackage[];
+}
+
+interface TestConnectionResponse {
+  success: boolean;
+}
+
+interface ConfirmPackageResponse {
+  success: boolean;
+  tracking_id: string;
+}
+
+interface DismissPackageResponse {
+  success: boolean;
 }
 
 /**
@@ -41,6 +69,21 @@ export async function addPackage(
     tracking_id: trackingId,
     vendor,
     name: name || "",
+  });
+}
+
+/**
+ * Edit an existing package (name/vendor).
+ */
+export async function editPackage(
+  hass: HomeAssistant,
+  trackingId: string,
+  updates: { name?: string; vendor?: string }
+): Promise<EditPackageResponse> {
+  return hass.callWS<EditPackageResponse>({
+    type: "paketti_tracker/edit_package",
+    tracking_id: trackingId,
+    ...updates,
   });
 }
 
@@ -88,5 +131,115 @@ export async function updateSettings(
   return hass.callWS<SettingsResponse>({
     type: "paketti_tracker/update_settings",
     ...settings,
+  });
+}
+
+/**
+ * Get notification configuration.
+ */
+export async function getNotifications(
+  hass: HomeAssistant
+): Promise<NotificationConfig> {
+  return hass.callWS<NotificationConfig>({
+    type: "paketti_tracker/get_notifications",
+  });
+}
+
+/**
+ * Update notification configuration.
+ */
+export async function updateNotifications(
+  hass: HomeAssistant,
+  config: Partial<NotificationConfig>
+): Promise<NotificationConfig> {
+  return hass.callWS<NotificationConfig>({
+    type: "paketti_tracker/update_notifications",
+    ...config,
+  });
+}
+
+/**
+ * Get email configuration.
+ */
+export async function getEmailConfig(
+  hass: HomeAssistant
+): Promise<EmailConfig> {
+  return hass.callWS<EmailConfig>({
+    type: "paketti_tracker/get_email_config",
+  });
+}
+
+/**
+ * Update email configuration.
+ */
+export async function updateEmailConfig(
+  hass: HomeAssistant,
+  config: Partial<EmailConfig>
+): Promise<EmailConfig> {
+  return hass.callWS<EmailConfig>({
+    type: "paketti_tracker/update_email_config",
+    ...config,
+  });
+}
+
+/**
+ * Test email IMAP connection.
+ */
+export async function testEmailConnection(
+  hass: HomeAssistant,
+  server: string,
+  port: number,
+  username: string,
+  password: string
+): Promise<boolean> {
+  const resp = await hass.callWS<TestConnectionResponse>({
+    type: "paketti_tracker/test_email_connection",
+    imap_server: server,
+    imap_port: port,
+    username,
+    password,
+  });
+  return resp.success;
+}
+
+/**
+ * Get discovered packages from email parsing.
+ */
+export async function getDiscoveredPackages(
+  hass: HomeAssistant
+): Promise<DiscoveredPackage[]> {
+  const resp = await hass.callWS<DiscoveredPackagesResponse>({
+    type: "paketti_tracker/discovered_packages",
+  });
+  return resp.packages;
+}
+
+/**
+ * Confirm a discovered package (add to tracked).
+ */
+export async function confirmPackage(
+  hass: HomeAssistant,
+  trackingId: string,
+  name?: string,
+  vendor?: string
+): Promise<ConfirmPackageResponse> {
+  return hass.callWS<ConfirmPackageResponse>({
+    type: "paketti_tracker/confirm_package",
+    tracking_id: trackingId,
+    ...(name ? { name } : {}),
+    ...(vendor ? { vendor } : {}),
+  });
+}
+
+/**
+ * Dismiss a discovered package.
+ */
+export async function dismissPackage(
+  hass: HomeAssistant,
+  trackingId: string
+): Promise<DismissPackageResponse> {
+  return hass.callWS<DismissPackageResponse>({
+    type: "paketti_tracker/dismiss_package",
+    tracking_id: trackingId,
   });
 }

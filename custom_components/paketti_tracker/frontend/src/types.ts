@@ -32,6 +32,8 @@ export interface Package {
   estimated_delivery: string | null;
   last_location: string | null;
   last_event_time: string | null;
+  last_updated: string | null;
+  tracking_url: string | null;
 }
 
 export type PackageStatus =
@@ -44,4 +46,30 @@ export type PackageStatus =
 
 export interface Settings {
   poll_interval_minutes: number;
+}
+
+export interface NotificationConfig {
+  enabled: boolean;
+  triggers: PackageStatus[];
+  devices: string[];
+}
+
+export interface EmailConfig {
+  enabled: boolean;
+  imap_server: string;
+  imap_port: number;
+  username: string;
+  password: string;
+  folder: string;
+  poll_interval_minutes: number;
+  auto_add: boolean;
+  search_days: number;
+}
+
+export interface DiscoveredPackage {
+  tracking_id: string;
+  vendor: string;
+  source_subject: string;
+  source_sender: string;
+  discovered_at: string;
 }

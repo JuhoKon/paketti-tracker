@@ -35,3 +35,4 @@ class TrackingResult:
     estimated_delivery: date | None = None
     last_location: str | None = None
     last_event_time: datetime | None = None
+    last_updated: datetime | None = None

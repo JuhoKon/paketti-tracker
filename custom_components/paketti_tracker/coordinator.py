@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -12,6 +12,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .const import (
+    CONF_NAME,
     CONF_PACKAGES,
     CONF_POLL_INTERVAL,
     CONF_TRACKING_ID,
@@ -20,6 +21,7 @@ from .const import (
     DOMAIN,
 )
 from .models import TrackingResult
+from .notifications import async_check_and_notify
 from .scrapers import get_scraper
 from .scrapers.base import BaseScraper, ScraperError
 
@@ -65,6 +67,7 @@ class PakettiCoordinator(DataUpdateCoordinator[dict[str, TrackingResult]]):
         for pkg in packages:
             tracking_id: str = pkg[CONF_TRACKING_ID]
             vendor: str = pkg[CONF_VENDOR]
+            package_name: str = pkg.get(CONF_NAME, tracking_id)
 
             # Skip polling for already-delivered packages.
             prev = previous_data.get(tracking_id)
@@ -75,7 +78,23 @@ class PakettiCoordinator(DataUpdateCoordinator[dict[str, TrackingResult]]):
             scraper = self._get_scraper(vendor)
             try:
                 result = await scraper.fetch(tracking_id, session)
+                result.last_updated = datetime.now(UTC)
                 results[tracking_id] = result
+
+                # Send notification if status changed.
+                old_status = prev.status if prev else None
+                latest_event_desc = (
+                    result.events[0].description if result.events else None
+                )
+                await async_check_and_notify(
+                    self.hass,
+                    self.config_entry.options,
+                    old_status=old_status,
+                    new_status=result.status,
+                    package_name=package_name,
+                    vendor=vendor,
+                    event_description=latest_event_desc,
+                )
             except ScraperError as exc:
                 _LOGGER.warning(
                     "Failed to fetch tracking data for %s (%s): %s",

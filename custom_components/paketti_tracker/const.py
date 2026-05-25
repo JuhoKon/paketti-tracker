@@ -59,3 +59,52 @@ ATTR_DELIVERED = "delivered"
 
 # Max events stored in attributes
 MAX_EVENTS = 10
+
+# Notification configuration
+CONF_NOTIFICATIONS = "notifications"
+CONF_NOTIFICATIONS_ENABLED = "enabled"
+CONF_NOTIFICATIONS_TRIGGERS = "triggers"
+CONF_NOTIFICATIONS_DEVICES = "devices"
+
+# Default notification triggers (status transitions that fire a notification)
+DEFAULT_NOTIFICATION_TRIGGERS: list[str] = [
+    STATUS_IN_TRANSIT,
+    STATUS_OUT_FOR_DELIVERY,
+    STATUS_DELIVERED,
+    STATUS_EXCEPTION,
+]
+
+# Email configuration
+CONF_EMAIL = "email"
+CONF_EMAIL_ENABLED = "enabled"
+CONF_EMAIL_IMAP_SERVER = "imap_server"
+CONF_EMAIL_IMAP_PORT = "imap_port"
+CONF_EMAIL_USERNAME = "username"
+CONF_EMAIL_PASSWORD = "password"
+CONF_EMAIL_FOLDER = "folder"
+CONF_EMAIL_POLL_INTERVAL = "poll_interval_minutes"
+CONF_EMAIL_AUTO_ADD = "auto_add"
+CONF_EMAIL_SEARCH_DAYS = "search_days"
+
+DEFAULT_EMAIL_IMAP_PORT = 993
+DEFAULT_EMAIL_FOLDER = "INBOX"
+DEFAULT_EMAIL_POLL_INTERVAL_MINUTES = 30
+DEFAULT_EMAIL_SEARCH_DAYS = 7
+
+# Discovered packages (from email parsing)
+CONF_DISCOVERED_PACKAGES = "discovered_packages"
+
+# Carrier tracking URL templates ({tracking_id} is replaced at runtime)
+TRACKING_URL_TEMPLATES: dict[str, str] = {
+    VENDOR_POSTI: "https://www.posti.fi/fi/seuranta#/lahetys/{tracking_id}",
+    VENDOR_POSTNORD: "https://tracking.postnord.com/fi/?id={tracking_id}",
+    VENDOR_MATKAHUOLTO: "https://www.matkahuolto.fi/seuranta/tilaus/{tracking_id}",
+}
+
+
+def get_tracking_url(vendor: str, tracking_id: str) -> str | None:
+    """Get the public tracking page URL for a package."""
+    template = TRACKING_URL_TEMPLATES.get(vendor)
+    if template is None:
+        return None
+    return template.format(tracking_id=tracking_id)

@@ -17,10 +17,12 @@ from custom_components.paketti_tracker.const import (
     DOMAIN,
     STATUS_IN_TRANSIT,
     VENDOR_POSTI,
+    get_tracking_url,
 )
 from custom_components.paketti_tracker.models import TrackingEvent, TrackingResult
 from custom_components.paketti_tracker.websocket_api import (
     ws_add_package,
+    ws_edit_package,
     ws_get_settings,
     ws_packages,
     ws_refresh,
@@ -32,6 +34,7 @@ from custom_components.paketti_tracker.websocket_api import (
 # schedulers. Access the original async function via __wrapped__ for testing.
 _ws_packages = ws_packages.__wrapped__
 _ws_add_package = ws_add_package.__wrapped__
+_ws_edit_package = ws_edit_package.__wrapped__
 _ws_remove_package = ws_remove_package.__wrapped__
 _ws_refresh = ws_refresh.__wrapped__
 _ws_get_settings = ws_get_settings.__wrapped__
@@ -341,3 +344,118 @@ async def test_update_settings():
     # Verify coordinator interval updated.
     coordinator = next(iter(hass.data[DOMAIN].values()))
     assert coordinator.update_interval == timedelta(minutes=15)
+
+
+# --- ws_edit_package ---
+
+
+@pytest.mark.asyncio
+async def test_edit_package_name():
+    """Test editing a package name."""
+    packages = [
+        {CONF_TRACKING_ID: "JJFI12345", CONF_VENDOR: VENDOR_POSTI, CONF_NAME: "Old Name"}
+    ]
+    hass, connection, entry = _make_hass(packages=packages)
+
+    msg = {"id": 7, "type": "paketti_tracker/edit_package", "tracking_id": "JJFI12345", "name": "New Name"}
+    await _ws_edit_package(hass, connection, msg)
+
+    connection.send_result.assert_called_once()
+    call_args = connection.send_result.call_args[0]
+    assert call_args[1]["success"] is True
+
+    # Verify config entry updated with new name.
+    update_call = hass.config_entries.async_update_entry.call_args
+    updated_packages = update_call[1]["options"][CONF_PACKAGES]
+    assert updated_packages[0][CONF_NAME] == "New Name"
+
+
+@pytest.mark.asyncio
+async def test_edit_package_vendor():
+    """Test editing a package vendor triggers refresh."""
+    packages = [
+        {CONF_TRACKING_ID: "JJFI12345", CONF_VENDOR: VENDOR_POSTI, CONF_NAME: "My Package"}
+    ]
+    hass, connection, entry = _make_hass(packages=packages)
+
+    msg = {"id": 7, "type": "paketti_tracker/edit_package", "tracking_id": "JJFI12345", "vendor": "postnord"}
+    await _ws_edit_package(hass, connection, msg)
+
+    connection.send_result.assert_called_once()
+    # Verify vendor updated.
+    update_call = hass.config_entries.async_update_entry.call_args
+    updated_packages = update_call[1]["options"][CONF_PACKAGES]
+    assert updated_packages[0][CONF_VENDOR] == "postnord"
+
+    # Verify coordinator refresh triggered.
+    coordinator = next(iter(hass.data[DOMAIN].values()))
+    coordinator.async_request_refresh.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_edit_package_not_found():
+    """Test editing a non-existent package returns error."""
+    hass, connection, entry = _make_hass()
+
+    msg = {"id": 7, "type": "paketti_tracker/edit_package", "tracking_id": "NOTEXIST", "name": "X"}
+    await _ws_edit_package(hass, connection, msg)
+
+    connection.send_error.assert_called_once()
+    error_args = connection.send_error.call_args[0]
+    assert error_args[1] == "not_found"
+
+
+# --- last_updated and tracking_url in ws_packages ---
+
+
+@pytest.mark.asyncio
+async def test_packages_includes_last_updated_and_tracking_url():
+    """Test that packages response includes last_updated and tracking_url."""
+    result = _make_result("JJFI12345")
+    result.last_updated = datetime(2026, 5, 25, 12, 0, 0, tzinfo=UTC)
+    hass, connection, entry = _make_hass(coordinator_data={"JJFI12345": result})
+
+    msg = {"id": 1, "type": "paketti_tracker/packages"}
+    await _ws_packages(hass, connection, msg)
+
+    call_args = connection.send_result.call_args[0]
+    pkg = call_args[1]["packages"][0]
+    assert pkg["last_updated"] == "2026-05-25T12:00:00+00:00"
+    assert pkg["tracking_url"] == "https://www.posti.fi/fi/seuranta#/lahetys/JJFI12345"
+
+
+@pytest.mark.asyncio
+async def test_packages_no_data_includes_tracking_url():
+    """Test packages with no tracking data still include tracking_url."""
+    hass, connection, entry = _make_hass(coordinator_data={})
+
+    msg = {"id": 1, "type": "paketti_tracker/packages"}
+    await _ws_packages(hass, connection, msg)
+
+    call_args = connection.send_result.call_args[0]
+    pkg = call_args[1]["packages"][0]
+    assert pkg["last_updated"] is None
+    assert pkg["tracking_url"] == "https://www.posti.fi/fi/seuranta#/lahetys/JJFI12345"
+
+
+# --- get_tracking_url ---
+
+
+def test_get_tracking_url_posti():
+    """Test Posti tracking URL."""
+    assert get_tracking_url("posti", "JJFI12345") == "https://www.posti.fi/fi/seuranta#/lahetys/JJFI12345"
+
+
+def test_get_tracking_url_postnord():
+    """Test Postnord tracking URL."""
+    assert get_tracking_url("postnord", "ABC123") == "https://tracking.postnord.com/fi/?id=ABC123"
+
+
+def test_get_tracking_url_matkahuolto():
+    """Test Matkahuolto tracking URL."""
+    assert get_tracking_url("matkahuolto", "MH999") == "https://www.matkahuolto.fi/seuranta/tilaus/MH999"
+
+
+def test_get_tracking_url_unknown_vendor():
+    """Test unknown vendor returns None."""
+    assert get_tracking_url("unknown_carrier", "XYZ") is None

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useAppContext } from "./App";
 import { getSettings, updateSettings } from "../api";
+import { NotificationSettings } from "./NotificationSettings";
+import { EmailSettings } from "./EmailSettings";
 
 export function SettingsDrawer() {
   const { hass, dispatch } = useAppContext();
@@ -58,34 +60,39 @@ export function SettingsDrawer() {
         </div>
 
         <div className="paketti-drawer__body">
-          <div className="paketti-field">
-            <label htmlFor="poll-interval">
-              Poll Interval: {pollInterval} minutes
-            </label>
-            <input
-              id="poll-interval"
-              type="range"
-              min={5}
-              max={240}
-              step={5}
-              value={pollInterval}
-              onChange={(e) => setPollInterval(Number(e.target.value))}
-            />
-            <div className="paketti-field__hint">
-              How often to check for tracking updates (5-240 minutes)
+          <div className="paketti-settings-section">
+            <h3 className="paketti-settings-section__title">General</h3>
+            <div className="paketti-field">
+              <label htmlFor="poll-interval">
+                Poll Interval: {pollInterval} minutes
+              </label>
+              <input
+                id="poll-interval"
+                type="range"
+                min={5}
+                max={240}
+                step={5}
+                value={pollInterval}
+                onChange={(e) => setPollInterval(Number(e.target.value))}
+              />
+              <div className="paketti-field__hint">
+                How often to check for tracking updates (5-240 minutes)
+              </div>
+            </div>
+            <div className="paketti-dialog__actions">
+              {saved && <span className="paketti-saved-msg">Saved!</span>}
+              <button
+                className="paketti-btn paketti-btn--primary paketti-btn--small"
+                onClick={() => void handleSave()}
+                disabled={saving}
+              >
+                {saving ? "Saving..." : "Save"}
+              </button>
             </div>
           </div>
-        </div>
 
-        <div className="paketti-drawer__footer">
-          {saved && <span className="paketti-saved-msg">Saved!</span>}
-          <button
-            className="paketti-btn paketti-btn--primary"
-            onClick={() => void handleSave()}
-            disabled={saving}
-          >
-            {saving ? "Saving..." : "Save"}
-          </button>
+          <NotificationSettings />
+          <EmailSettings />
         </div>
       </div>
     </div>
