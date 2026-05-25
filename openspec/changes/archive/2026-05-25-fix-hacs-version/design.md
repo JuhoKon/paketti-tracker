@@ -3,7 +3,7 @@
 HACS (Home Assistant Community Store) determines an integration's version from git tags. When no valid semver tag exists, it uses the commit SHA as the version string. The SHA `2a4b025` is not valid semver, so HACS rejects it.
 
 Current state:
-- `manifest.json` has `"version": "0.9.1"` but no corresponding git tag exists
+- `manifest.json` has `"version": "1.0.0"` but no corresponding git tag exists
 - No `hacs.json` metadata file exists at the repository root
 - HACS requires either a tag-based version or explicit configuration
 
@@ -31,9 +31,9 @@ HACS needs a `hacs.json` at the repo root to understand the repository layout. K
 
 ### 2. Tag releases with semver matching `manifest.json`
 
-HACS reads the version from git tags. The tag format should be plain semver without `v` prefix (e.g. `0.9.1`) to match `manifest.json` directly.
+HACS reads the version from git tags. The tag format should be plain semver without `v` prefix (e.g. `1.0.0`) to match `manifest.json` directly.
 
-**Alternative considered:** Using `v`-prefixed tags (e.g. `v0.9.1`) — this also works but requires HACS to strip the prefix. Plain semver is simpler and avoids mismatch.
+**Alternative considered:** Using `v`-prefixed tags (e.g. `v1.0.0`) — this also works but requires HACS to strip the prefix. Plain semver is simpler and avoids mismatch.
 
 ### 3. Keep `version` in `manifest.json` as source of truth
 

@@ -6,7 +6,7 @@ HACS rejects the integration with error: "The version 2a4b025 for this integrati
 
 - Add `hacs.json` at repository root with required HACS metadata (render_readme, content_in_root path)
 - Ensure `manifest.json` version field is aligned with git tag versioning
-- Create a semver git tag (e.g. `v0.9.1`) matching `manifest.json` version
+- Create a semver git tag (e.g. `v1.0.0`) matching `manifest.json` version
 
 ## Non-goals
 
