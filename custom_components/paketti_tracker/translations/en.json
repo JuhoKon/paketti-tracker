@@ -1,0 +1,48 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Paketti Tracker",
+        "description": "Set up package tracking. You can add packages to track in the integration options after setup.",
+        "data": {}
+      }
+    },
+    "abort": {
+      "already_configured": "Paketti Tracker is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Paketti Tracker",
+        "description": "Manage your tracked packages.",
+        "data": {
+          "action": "Action"
+        }
+      },
+      "add": {
+        "title": "Add Package",
+        "description": "Enter the tracking details for the package.",
+        "data": {
+          "tracking_id": "Tracking ID",
+          "vendor": "Carrier",
+          "name": "Package name (optional)"
+        }
+      },
+      "remove": {
+        "title": "Remove Packages",
+        "description": "Select packages to remove from tracking.",
+        "data": {
+          "remove": "Packages to remove"
+        }
+      }
+    },
+    "error": {
+      "already_tracked": "This tracking ID is already being tracked.",
+      "empty_tracking_id": "Tracking ID cannot be empty."
+    },
+    "abort": {
+      "no_packages": "No packages to remove."
+    }
+  }
+}

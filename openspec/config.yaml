@@ -1,0 +1,34 @@
+schema: spec-driven
+
+context: |
+  Project: paketti-tracker
+  Type: Home Assistant custom component / integration
+  Tech stack: Python (3.12+)
+  Distribution: HACS-compatible custom integration
+
+  Domain knowledge:
+  - Follows Home Assistant integration architecture: config_flow, coordinator, entity platform(s)
+  - Uses DataUpdateCoordinator for polling external APIs / services
+  - Entities derive from HA base classes (SensorEntity, BinarySensorEntity, etc.)
+  - Config entries via config_flow.py; options flow for runtime settings
+  - Translations in translations/en.json (and other locales)
+  - manifest.json declares integration metadata, dependencies, and HA version requirements
+  - No direct I/O in entity classes; all I/O goes through the coordinator or a dedicated API client
+  - Async-first: all I/O uses async/await; sync calls wrapped with hass.async_add_executor_job
+  - Tests use pytest + pytest-homeassistant-custom-component; fixtures from HA test helpers
+  - Code style: Black formatter, ruff linter, mypy type checking
+  - Conventional commits (feat, fix, chore, docs, test, refactor)
+
+rules:
+  proposal:
+    - Keep proposals concise; include a "Non-goals" section
+    - State clearly which HA entity platforms are introduced (sensor, binary_sensor, etc.)
+    - Identify any external APIs or services the integration depends on
+  design:
+    - Show the module layout (e.g. __init__.py, coordinator.py, sensor.py, config_flow.py)
+    - Document the data flow: external service -> coordinator -> entities
+    - Call out any HA-specific patterns used (config entry, options flow, device registry, etc.)
+  tasks:
+    - Break tasks into chunks of no more than 2-3 hours each
+    - Order tasks so the integration is runnable (loads without error) as early as possible
+    - Include a task for writing pytest tests for each new module

@@ -1,0 +1,75 @@
+[project]
+name = "paketti-tracker"
+version = "0.1.0"
+description = "Home Assistant custom integration for tracking Finnish postal packages"
+requires-python = ">=3.12"
+license = "MIT"
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "aiohttp>=3.9",
+    "homeassistant>=2024.1",
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.4",
+    "mypy>=1.10",
+    "voluptuous>=0.14",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["custom_components", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort
+    "N",      # pep8-naming
+    "UP",     # pyupgrade
+    "B",      # flake8-bugbear
+    "A",      # flake8-builtins
+    "C4",     # flake8-comprehensions
+    "SIM",    # flake8-simplify
+    "RUF",    # ruff-specific rules
+    "ASYNC",  # flake8-async
+    "BLE",    # flake8-blind-except
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "RUF059", # unused unpacked variables in tests (common pattern)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["custom_components.paketti_tracker"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+ignore_missing_imports = true
+follow_imports = "silent"
+
+[[tool.mypy.overrides]]
+module = ["homeassistant.*", "tests.*"]
+ignore_errors = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.black]
+target-version = ["py312"]
+line-length = 100

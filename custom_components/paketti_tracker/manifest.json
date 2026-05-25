@@ -1,0 +1,12 @@
+{
+  "domain": "paketti_tracker",
+  "name": "Paketti Tracker",
+  "version": "0.1.0",
+  "config_flow": true,
+  "iot_class": "cloud_polling",
+  "requirements": [],
+  "dependencies": [],
+  "codeowners": [],
+  "documentation": "",
+  "issue_tracker": ""
+}
