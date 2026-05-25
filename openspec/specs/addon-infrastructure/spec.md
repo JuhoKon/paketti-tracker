@@ -2,11 +2,20 @@
 
 ### Requirement: Docker container runtime
 
-The add-on container SHALL run Python 3.12 with FastAPI and uvicorn as the application server.
+The add-on container SHALL use a multi-stage Docker build: stage 1 builds the React frontend with Node.js, stage 2 runs Python 3.12 with FastAPI and uvicorn as the application server. A build.yaml SHALL map each supported architecture (aarch64, amd64, armv7) to the correct HA base image via the BUILD_FROM arg.
 
 #### Scenario: Container starts successfully
 - **WHEN** the add-on is started by HA Supervisor
 - **THEN** uvicorn SHALL start the FastAPI application on port 8099
+
+#### Scenario: Frontend is built during Docker build
+- **WHEN** the Docker image is built
+- **THEN** stage 1 SHALL run `npm ci && npm run build` producing frontend/dist/
+- **AND** stage 2 SHALL COPY the built assets from stage 1
+
+#### Scenario: Multi-arch build
+- **WHEN** the add-on is built for aarch64
+- **THEN** Supervisor SHALL pass the aarch64-base-python image as BUILD_FROM
 
 ---
 
