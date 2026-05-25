@@ -1,7 +1,7 @@
 {
   "domain": "paketti_tracker",
   "name": "Paketti Tracker",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "config_flow": true,
   "iot_class": "cloud_polling",
   "requirements": ["aioimaplib==2.0.1"],
