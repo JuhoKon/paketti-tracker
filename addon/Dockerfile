@@ -1,3 +1,5 @@
+ARG BUILD_FROM=ghcr.io/home-assistant/aarch64-base-python:3.12-alpine3.19
+
 # Stage 1: Build frontend
 FROM node:20-alpine AS frontend-build
 WORKDIR /frontend
@@ -7,7 +9,6 @@ COPY frontend/ ./
 RUN npm run build
 
 # Stage 2: Runtime
-ARG BUILD_FROM
 FROM ${BUILD_FROM}
 
 # Install system dependencies for aiosqlite and aioimaplib
