@@ -1,0 +1,156 @@
+"""Email polling service — checks IMAP for new tracking IDs."""
+
+from __future__ import annotations
+
+import asyncio
+import logging
+
+from app.database import Database
+from app.db.models import PackageRow
+from app.db.repository import PackageRepository
+from app.db.settings_repository import SettingsRepository
+from app.email.client import EmailClient, EmailClientError
+from app.email.parser import parse_email
+from app.scrapers.base import get_tracking_url
+
+logger = logging.getLogger(__name__)
+
+
+class EmailService:
+    """Background service that polls IMAP for emails containing tracking IDs."""
+
+    def __init__(
+        self,
+        database: Database,
+        poll_interval_minutes: int = 30,
+    ) -> None:
+        self._database = database
+        self._poll_interval = poll_interval_minutes * 60
+        self._task: asyncio.Task | None = None
+        self._running = False
+
+    async def start(self) -> None:
+        """Start the email polling loop."""
+        self._running = True
+        self._task = asyncio.create_task(self._poll_loop())
+        logger.info("Email service started (interval: %ds)", self._poll_interval)
+
+    async def stop(self) -> None:
+        """Stop the email polling loop."""
+        self._running = False
+        if self._task:
+            self._task.cancel()
+            try:
+                await self._task
+            except asyncio.CancelledError:
+                pass
+            self._task = None
+        logger.info("Email service stopped")
+
+    def set_poll_interval(self, minutes: int) -> None:
+        """Update the poll interval dynamically."""
+        self._poll_interval = minutes * 60
+
+    async def poll_now(self) -> int:
+        """Trigger an immediate poll. Returns number of discovered packages."""
+        return await self._check_emails()
+
+    async def _poll_loop(self) -> None:
+        """Main polling loop."""
+        # Initial delay before first poll (give app time to fully start)
+        await asyncio.sleep(10)
+
+        while self._running:
+            try:
+                await self._check_emails()
+            except asyncio.CancelledError:
+                break
+            except Exception:
+                logger.exception("Error in email poll loop")
+
+            try:
+                await asyncio.sleep(self._poll_interval)
+            except asyncio.CancelledError:
+                break
+
+    async def _check_emails(self) -> int:
+        """Check emails and process discovered packages. Returns count."""
+        settings_repo = SettingsRepository(self._database)
+        email_config = await settings_repo.get_json("email")
+
+        if not email_config or not email_config.get("enabled"):
+            return 0
+
+        host = email_config.get("host", "")
+        if not host:
+            return 0
+
+        client = EmailClient(
+            server=host,
+            port=email_config.get("port", 993),
+            username=email_config.get("username", ""),
+            password=email_config.get("password", ""),
+            folder=email_config.get("folder", "INBOX"),
+        )
+
+        try:
+            await client.connect()
+            uids = await client.search_recent(days=7)
+
+            if not uids:
+                return 0
+
+            messages = await client.fetch_messages(uids)
+        except EmailClientError as exc:
+            logger.warning("Email check failed: %s", exc)
+            return 0
+        finally:
+            await client.disconnect()
+
+        # Parse emails for tracking IDs
+        pkg_repo = PackageRepository(self._database)
+        discovered_count = 0
+        auto_add = email_config.get("auto_add", False)
+
+        for msg in messages:
+            discovered = parse_email(msg)
+            for pkg in discovered:
+                # Skip if already tracked or already discovered
+                existing = await pkg_repo.get_by_id(pkg.tracking_id)
+                if existing:
+                    continue
+
+                # Check if already in discovered list
+                discovered_list = await pkg_repo.get_discovered()
+                already_discovered = any(
+                    d["tracking_id"] == pkg.tracking_id for d in discovered_list
+                )
+                if already_discovered:
+                    continue
+
+                if auto_add:
+                    # Directly add to tracked packages
+                    tracking_url = get_tracking_url(pkg.vendor, pkg.tracking_id)
+                    from datetime import datetime
+                    new_pkg = PackageRow(
+                        tracking_id=pkg.tracking_id,
+                        vendor=pkg.vendor,
+                        name="",
+                        tracking_url=tracking_url,
+                        created_at=datetime.now(),
+                    )
+                    await pkg_repo.create(new_pkg)
+                    logger.info("Auto-added package %s from email", pkg.tracking_id)
+                else:
+                    # Add to discovered queue
+                    await pkg_repo.add_discovered(
+                        tracking_id=pkg.tracking_id,
+                        vendor=pkg.vendor,
+                        source_subject=pkg.source_subject,
+                        source_sender=pkg.source_sender,
+                    )
+                    logger.info("Discovered package %s from email", pkg.tracking_id)
+
+                discovered_count += 1
+
+        return discovered_count

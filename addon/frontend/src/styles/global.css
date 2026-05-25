@@ -1,0 +1,483 @@
+/* Paketti Tracker — Standalone SPA styles */
+
+:root {
+  --pt-bg: #f8f9fa;
+  --pt-surface: #ffffff;
+  --pt-text: #1a1a2e;
+  --pt-text-secondary: #6c757d;
+  --pt-primary: #4361ee;
+  --pt-primary-hover: #3a56d4;
+  --pt-danger: #e63946;
+  --pt-border: #dee2e6;
+  --pt-radius: 8px;
+  --pt-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+
+  /* Status colors */
+  --pt-status-pending: #adb5bd;
+  --pt-status-in-transit: #4361ee;
+  --pt-status-out-for-delivery: #f77f00;
+  --pt-status-delivered: #2a9d8f;
+  --pt-status-exception: #e63946;
+  --pt-status-unknown: #6c757d;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--pt-bg);
+  color: var(--pt-text);
+  line-height: 1.5;
+}
+
+.paketti-tracker {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+/* Header */
+.paketti-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--pt-border);
+}
+
+.paketti-header__title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.paketti-header__right {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Buttons */
+.paketti-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 16px;
+  border: 1px solid var(--pt-border);
+  border-radius: var(--pt-radius);
+  background: var(--pt-surface);
+  color: var(--pt-text);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.paketti-btn:hover {
+  background: var(--pt-bg);
+}
+
+.paketti-btn--primary {
+  background: var(--pt-primary);
+  color: white;
+  border-color: var(--pt-primary);
+}
+
+.paketti-btn--primary:hover {
+  background: var(--pt-primary-hover);
+}
+
+.paketti-btn--danger {
+  color: var(--pt-danger);
+  border-color: var(--pt-danger);
+}
+
+.paketti-btn--ghost {
+  border-color: transparent;
+  background: transparent;
+}
+
+.paketti-btn--ghost:hover {
+  background: var(--pt-bg);
+}
+
+.paketti-btn--icon {
+  padding: 8px;
+  border-radius: 50%;
+}
+
+.paketti-btn--sm {
+  padding: 4px 10px;
+  font-size: 0.8rem;
+}
+
+.paketti-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Package List */
+.paketti-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Package Card */
+.paketti-card {
+  background: var(--pt-surface);
+  border: 1px solid var(--pt-border);
+  border-radius: var(--pt-radius);
+  box-shadow: var(--pt-shadow);
+  overflow: hidden;
+}
+
+.paketti-card--delivered {
+  opacity: 0.7;
+}
+
+.paketti-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  cursor: pointer;
+  gap: 12px;
+}
+
+.paketti-card__header:hover {
+  background: var(--pt-bg);
+}
+
+.paketti-card__info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.paketti-card__name {
+  font-size: 1rem;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.paketti-card__meta {
+  font-size: 0.8rem;
+  color: var(--pt-text-secondary);
+}
+
+.paketti-card__actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.paketti-card__timeline {
+  padding: 0 16px 16px;
+  border-top: 1px solid var(--pt-border);
+}
+
+.paketti-card__timeline--empty {
+  padding: 16px;
+  color: var(--pt-text-secondary);
+  font-style: italic;
+}
+
+/* Status badges */
+.paketti-status {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  width: fit-content;
+}
+
+.paketti-status--pending { background: var(--pt-status-pending); color: white; }
+.paketti-status--in_transit { background: var(--pt-status-in-transit); color: white; }
+.paketti-status--out_for_delivery { background: var(--pt-status-out-for-delivery); color: white; }
+.paketti-status--delivered { background: var(--pt-status-delivered); color: white; }
+.paketti-status--exception { background: var(--pt-status-exception); color: white; }
+.paketti-status--unknown { background: var(--pt-status-unknown); color: white; }
+
+/* Timeline */
+.paketti-timeline {
+  padding: 16px 0 0;
+}
+
+.paketti-timeline__item {
+  display: flex;
+  gap: 12px;
+  padding-bottom: 16px;
+  position: relative;
+}
+
+.paketti-timeline__item:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 14px;
+  bottom: 0;
+  width: 2px;
+  background: var(--pt-border);
+}
+
+.paketti-timeline__dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--pt-border);
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+
+.paketti-timeline__item--latest .paketti-timeline__dot {
+  background: var(--pt-primary);
+}
+
+.paketti-timeline__content {
+  min-width: 0;
+}
+
+.paketti-timeline__desc {
+  font-size: 0.9rem;
+}
+
+.paketti-timeline__meta {
+  font-size: 0.75rem;
+  color: var(--pt-text-secondary);
+}
+
+/* Empty state */
+.paketti-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 16px;
+  color: var(--pt-text-secondary);
+  text-align: center;
+}
+
+.paketti-empty svg {
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.paketti-empty__detail {
+  font-size: 0.85rem;
+  margin-top: 4px;
+}
+
+/* Overlay / Dialog */
+.paketti-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.paketti-dialog {
+  background: var(--pt-surface);
+  border-radius: var(--pt-radius);
+  padding: 24px;
+  width: 90%;
+  max-width: 420px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.paketti-dialog h2 {
+  margin-bottom: 16px;
+}
+
+.paketti-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+/* Form fields */
+.paketti-field {
+  margin-bottom: 12px;
+}
+
+.paketti-field label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin-bottom: 4px;
+  color: var(--pt-text-secondary);
+}
+
+.paketti-field input,
+.paketti-field select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--pt-border);
+  border-radius: var(--pt-radius);
+  font-size: 0.9rem;
+  background: var(--pt-surface);
+}
+
+.paketti-field input:focus,
+.paketti-field select:focus {
+  outline: none;
+  border-color: var(--pt-primary);
+  box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+}
+
+.paketti-field input:disabled {
+  opacity: 0.6;
+  background: var(--pt-bg);
+}
+
+.paketti-field--row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.paketti-field--row label {
+  margin-bottom: 0;
+}
+
+.paketti-field--row input[type="checkbox"] {
+  width: auto;
+}
+
+.paketti-field__hint {
+  font-size: 0.8rem;
+  color: var(--pt-text-secondary);
+  margin-top: 4px;
+}
+
+.paketti-error {
+  color: var(--pt-danger);
+  font-size: 0.85rem;
+  margin: 8px 0;
+}
+
+/* Settings page */
+.paketti-settings {
+  max-width: 600px;
+}
+
+.paketti-settings__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.paketti-section {
+  background: var(--pt-surface);
+  border: 1px solid var(--pt-border);
+  border-radius: var(--pt-radius);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.paketti-section h3 {
+  font-size: 1rem;
+  margin-bottom: 12px;
+}
+
+/* Discovered packages */
+.paketti-discovered {
+  margin-bottom: 16px;
+}
+
+.paketti-discovered__title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--pt-primary);
+}
+
+.paketti-discovered__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.paketti-discovered__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--pt-surface);
+  border: 1px solid var(--pt-primary);
+  border-radius: var(--pt-radius);
+  gap: 12px;
+}
+
+.paketti-discovered__info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.paketti-discovered__id {
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.paketti-discovered__meta {
+  font-size: 0.75rem;
+  color: var(--pt-text-secondary);
+}
+
+.paketti-discovered__actions {
+  display: flex;
+  gap: 6px;
+}
+
+/* Spinner */
+.paketti-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--pt-border);
+  border-top-color: var(--pt-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 12px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.spin {
+  animation: spin 0.8s linear infinite;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .paketti-card__header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .paketti-card__actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .paketti-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}
